@@ -71,28 +71,35 @@ class Sniffer:
         return reportable_messages
 
     def refresh_hotspot_connection(self):
-        down = subprocess('ifdown wlan0')
+        down = subprocess.Popen(['ifdown', 'wlan0'], stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         down.communicate()
-        up = subprocess('ifup wlan0')
+        up = subprocess.Popen(['ifup', 'wlan0'], stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         up.communicate()
 
     def start_monitor_mode(self):
-        monitor = subprocess('airmon-ng start wlan0')
+        monitor = subprocess.Popen(['airmon-ng', 'start', 'wlan0'], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         monitor.communicate()
 
     def stop_monitor_mode(self):
-        monitor = subprocess('airmon-ng stop mon0')
+        monitor = subprocess.Popen(['airmon-ng', 'stop', 'mon0'], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         monitor.communicate()
 
     def sniff_ssid(self, ssid):
-        command = 'airodump-ng mon0 --bssid {0} --write /home/source/scans/hound_scan --output-format csv'.format(ssid)
-        sniffer = subprocess(command)
+        command = ['airodump-ng', 'mon0', '--bssid {0}'.format(ssid),
+                   '--write /home/source/scans/hound_scan', '--output-format csv'.format(ssid)];
+        sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sniffer.communicate(timeout=15)
         sniffer.kill()
 
     def sniff_all(self):
-        command = 'airodump-ng mon0 --write /home/source/scans/hound_scan --output-format csv'
-        sniffer = subprocess(command)
+        command = ['airodump-ng', 'mon0', '--write /home/source/scans/hound_scan', '--output-format csv']
+        sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sniffer.communicate(timeout=15)
         sniffer.kill()
 

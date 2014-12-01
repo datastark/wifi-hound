@@ -69,4 +69,4 @@ class HoundDaemon():
 
 if __name__ == '__main__':
     test_daemon = HoundDaemon()
-    test_deamon.run()
+    test_daemon.run()
