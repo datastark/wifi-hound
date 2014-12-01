@@ -1,83 +1,72 @@
 import time
+from datetime import datetime
+from datetime import timedelta
 from Sniffer import Sniffer
 from DataInterface import DataInterface
 from TwitterInterface import TwitterInterface
 
+SLEEP_INTERVAL = 30
 
-class Hound:
-    def __init__(self):
-        self.twitter_username = 'iit_cs549_p'
-        print 'Initializing Database...'
+
+class HoundDaemon():
+
+    def __init__(self, *args, **kwargs):
         self.data_interface = DataInterface()
-        print 'Initializing Twitter...'
         self.twitter_interface = TwitterInterface(self.data_interface)
-        print 'Initializing Wifi Sniffer...'
         self.sniffer = Sniffer(self.data_interface)
 
     def parse_and_execute_command(self, last_mention):
-        if last_mention[0] == 'SET_MODE':
+        command = last_mention['text']
+        if command[0] == 'SET_MODE':
             current_config = self.data_interface.get_hound_mode()
-            if last_mention[1] == current_config['Mode'] and last_mention[2] == current_config['Args']:
-                return
-            else:
-                self.data_interface.set_hound_mode(last_mention[1], last_mention[2])
-                if last_mention[1] == 'SCAN':
-                    message = 'Mode Set: SCAN'
+            try:
+                if command[1] == 'SCAN':
+                    if current_config['Mode'] == 'SCAN':
+                        return
+                    else:
+                        self.data_interface.set_hound_mode(command[1])
+                        self.twitter_interface.post('Mode Successfully Set: SCAN')
+                        return
+                elif command[1] == current_config['Mode'] and command[2] == current_config['Args']:
+                    print 'No Change In New Command'
+                    return
                 else:
-                    message = "Mode Set: {0}, '{1}'".format(last_mention[1], last_mention[2])
-                print message
-                #self.twitter_interface.post(message)
+                    self.data_interface.set_hound_mode(command[1], command[2])
+                    self.twitter_interface.post('Mode Successfully Set: {0}, {1}'.format(command[1], command[2]))
+            except Exception:
+                print 'Duplicate Twitter Status'
+        elif command[0] == 'REFRESH':
+            if last_mention['created_at'] > datetime.utcnow() - timedelta(0,SLEEP_INTERVAL):
+                current_config = self.data_interface.get_hound_mode()
+                try:
+                    if current_config['Mode'] == 'SCAN':
+                        self.data_interface.refresh_scan()
+                        self.twitter_interface.post('SCAN Refresh Complete')
+                    elif current_config['Mode'] == 'AP':
+                        self.data_interface.refresh_ap()
+                        self.twitter_interface.post('AP Refresh Complete')
+                    else:
+                        self.data_interface.refresh_scan()
+                        self.twitter_interface.post('MAC Refresh Complete')
+                except Exception:
+                    print 'Duplicate Twitter Status'
 
-    def execute(self):
-        last_mention = self.twitter_interface.get_last_mention()
-        self.parse_and_execute_command(last_mention)
-        results = self.sniffer.execute()
-        if results != '':
-            self.twitter_interface.post(results)
+    def mention_is_new(self, last_mention):
+        current_config = self.data_interface.get_hound_mode()
+        if last_mention['created_at'] > current_config['Set Time']:
+            return True
+        else:
+            return False
 
-    def execute_post(self):
-        print 'Sending a Test Post...'
-        self.twitter_interface.post("@iit_cs549_p SET_MODE AP 'Test Post'")
-        print 'Test Post Complete!'
-
-    def get_twitter_credentials(self):
-        tokens = self.data_interface.get_twitter_credentials(self.twitter_username)
-        print '\tUsername: ' + self.twitter_username
-        print '\tConsumer Key: ' + tokens['consumer_key']
-        print '\tConsumer Secret: ' + tokens['consumer_secret']
-        print '\tAccess Key: ' + tokens['access_token_key']
-        print '\tAccess Secret: ' + tokens['access_token_secret']
-
-    def get_last_mention(self):
-        print 'Getting Last Mention...'
-        mention = self.twitter_interface.get_last_mention()
-        print '\tLast Mention: {0} {1} {2}'.format(mention[0], mention[1], mention[2])
-        return mention
-
-    def get_mode(self):
-        print 'Getting Mode Info...'
-        mode_info = self.data_interface.get_hound_mode()
-        print '\tCurrent Mode: ' + mode_info['Mode']
-        print '\tMode Arguments: ' + mode_info['Args']
-
-    def set_mode(self):
-        print 'Setting Mode Info...'
-        self.data_interface.set_hound_mode('SCAN', '')
-
-    def teardown(self):
-        self.data_interface.disconnect()
-
-    def record_access_points(self):
-        print 'Recording Access Points...'
-        found_points = dict([
-            ('52:57:1A:02:9D:F0', 'Test Point 1'),
-            ('50:60:B1:21:D6:D9', 'Test Point 2'),
-        ])
-        self.data_interface.update_access_points(found_points)
+    def run(self):
+        while True:
+            last_mention = self.twitter_interface.get_last_mention()
+            if self.mention_is_new(last_mention):
+                self.parse_and_execute_command(last_mention)
+            results = self.sniffer.execute()
+            if len(results):
+                self.twitter_interface.post_many(results)
 
 if __name__ == '__main__':
-    print 'Initializing...'
-    test = Hound()
-    test.record_access_points()
-    test.teardown()
-    print 'Test Complete!'
+    test_daemon = HoundDaemon()
+    test_deamon.run()

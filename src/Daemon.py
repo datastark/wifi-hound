@@ -23,7 +23,7 @@ class Daemon(object):
 
         os.chdir("/")
         os.setsid()
-        os.unmask(0)
+        os.umask(0)
 
         try:
             pid = os.fork()
