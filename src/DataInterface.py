@@ -3,6 +3,7 @@ from datetime import datetime
 
 DEFAULT_MODE = 'SCAN'
 DEFAULT_ARGS = ''
+DEFAULT_TIME = "2014-11-30 00:00:00.00000"
 SUPPORTED_MODES = ['SCAN', 'AP', 'MAC']
 
 
@@ -35,11 +36,13 @@ class DataInterface:
             return dict([
                 ('Mode', result[1]),
                 ('Args', result[2]),
+                ('Set Time', result[0]),
             ])
         else:
             return dict([
                 ('Mode', DEFAULT_MODE),
                 ('Args', DEFAULT_ARGS),
+                ('Set Time', datetime.strptime(DEFAULT_TIME, "%Y-%m-%d %H:%M:%S.%f"))
             ])
 
     def set_hound_mode(self, new_mode, new_args):
@@ -59,6 +62,36 @@ class DataInterface:
             all_macs.append(row[0])
         return all_macs
 
+    def get_mac_addresses_with_state(self, state):
+        statement = "SELECT * FROM mac_addresses WHERE State = '{0}'".format(state)
+        self.cursor.execute(statement)
+        selected_macs = dict()
+        for row in self.cursor.fetchall():
+            selected_macs[row[0]] = dict([
+                ('LastSeen', row[1]),
+                ('State', row[2]),
+                ('StateDelta', row[3]),
+            ])
+        return selected_macs
+
+    def drop_table(self, table):
+        statement = 'DROP TABLE {0}'.format(table)
+        self.cursor.execute(statement)
+        self.db.commit()
+
+    def refresh_scan(self):
+        self.drop_table('access_points')
+        statement = 'CREATE TABLE access_points(Mac TEXT, Ssid TEXT, LastSeen DATETIME);'
+        self.cursor.execute(statement)
+        self.db.commit()
+
+    def refresh_ap(self):
+        self.refresh_scan()
+        self.drop_table('mac_addresses')
+        statement = 'CREATE TABLE mac_addresses(Mac TEXT, LastSeen DATETIME, StateDelta INT);'
+        self.cursor.execute(statement)
+        self.db.commit()
+
     def update_access_points(self, scan):
         insert_command = "INSERT INTO access_points VALUES(?,?,?)"
         update_command = "UPDATE access_points SET LastSeen = ? WHERE Mac = ?"
@@ -73,6 +106,35 @@ class DataInterface:
                 self.cursor.execute(insert_command, [mac, ssid, current_datetime])
                 messages.append("New AP: {0} - {1}".format(mac, ssid))
 
+        self.db.commit()
+        return messages
+
+    def update_mac_addresses(self, scan):
+        insert_command = 'INSERT INTO mac_addresses VALUES(?,?,?,?)'
+        update_same_state = 'UPDATE mac_addresses SET LastSeen = ? WHERE Mac = ?'
+        update_new_connect = 'UPDATE mac_addresses SET StateDelta = ?, LastSeen = ?, State = ? WHERE Mac = ?'
+        update_new_disconnect = 'UPDATE mac_addresses SET StateDelta = ?, State = ? WHERE Mac = ?'
+        current_datetime = datetime.now()
+        connected_mac_addresses = self.get_mac_addresses_with_state('CONNECTED')
+        disconnected_mac_addresses = self.get_mac_addresses_with_state('DISCONNECTED')
+        messages = []
+
+        for mac in scan:
+            if mac in connected_mac_addresses:
+                self.cursor.execute(update_same_state, [current_datetime, mac])
+            elif mac in disconnected_mac_addresses:
+                self.cursor.execute(update_new_connect, [disconnected_mac_addresses[mac]['StateDelta']+1,
+                                                         current_datetime, 'CONNECTED', mac])
+                messages.append("Device Reconnected: {0}".format(mac))
+            else:
+                self.cursor.execute(insert_command, [mac, current_datetime, 'CONNECTED', 1])
+                messages.append("New Device Detected: {0}".format(mac))
+
+        for mac in connected_mac_addresses.iteritems():
+            if mac not in scan:
+                self.cursor.execute(update_new_disconnect, [connected_mac_addresses[mac]['StateDelta']+1,
+                                                            'DISCONNECTED', mac])
+                messages.append("Device Disconnected: {0}".format(mac))
         self.db.commit()
         return messages
 
