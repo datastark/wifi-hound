@@ -1,5 +1,6 @@
 import time
 import shlex
+import datetime
 from twython import Twython
 
 
@@ -28,6 +29,9 @@ class TwitterInterface:
 
     def get_last_mention(self):
         mentions = self.twitter.get_mentions_timeline()
-        last_mention = mentions[0]['text']
-        split_mention = shlex.split(last_mention)
-        return split_mention[1:]
+        last_mention = dict()
+        mention_text = mentions[0]['text']
+        split_mention = shlex.split(mention_text)
+        last_mention['text'] = split_mention[1:]
+        last_mention['created_at'] = datetime.datetime.strptime(mentions[0]['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
+        return last_mention

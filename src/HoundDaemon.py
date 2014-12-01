@@ -15,27 +15,30 @@ class HoundDaemon(Daemon):
         self.sniffer = Sniffer(self.data_interface)
 
     def parse_and_execute_command(self, last_mention):
-        if last_mention[0] == 'SET_MODE':
+        command = last_mention['text']
+        if command[0] == 'SET_MODE':
             current_config = self.data_interface.get_hound_mode()
-            if last_mention[1] == current_config['Mode'] and last_mention[2] == current_config['Args']:
+            if command[1] == current_config['Mode'] and command[2] == current_config['Args']:
                 return
             else:
-                self.data_interface.set_hound_mode(last_mention[1], last_mention[2])
-                self.twitter_interface.post('Mode Successfully Set: {0}, {1}'.format(last_mention[1], last_mention[2]))
-        elif last_mention[0] == 'REFRESH':
+                self.data_interface.set_hound_mode(command[1], command[2])
+                self.twitter_interface.post('Mode Successfully Set: {0}, {1}'.format(command[1], command[2]))
+        elif command[0] == 'REFRESH':
             current_config = self.data_interface.get_hound_mode()
             if current_config['Mode'] == 'SCAN':
                 self.data_interface.refresh_scan()
+                self.twitter_interface.post('SCAN Refresh Complete')
             elif current_config['Mode'] == 'AP':
                 self.data_interface.refresh_ap()
+                self.twitter_interface.post('AP Refresh Complete')
             else:
                 self.data_interface.refresh_scan()
+                self.twitter_interface.post('MAC Refresh Complete')
 
     def mention_is_new(self, last_mention):
-        mention_time = datetime.strftime('%Y-%m-%d %H:%M:%S',
-                                         time.strptime(last_mention['created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+        mention_time = datetime.datetime.strptime(last_mention['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
         current_config = self.data_interface.get_hound_mode()
-        if mention_time > current_config['Set Time']:
+        if mention_time > datetime.datetime.strptime(current_config['Set Time'], '%Y-%m-%d %H:%M:%S.%f'):
             return True
         else:
             return False

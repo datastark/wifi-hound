@@ -5,13 +5,14 @@ DEFAULT_MODE = 'SCAN'
 DEFAULT_ARGS = ''
 DEFAULT_TIME = "2014-11-30 00:00:00.00000"
 SUPPORTED_MODES = ['SCAN', 'AP', 'MAC']
+#Linux: /home/source/db/hound.db
+DB_LOCATION = 'C:/Users/ericf_000/Documents/Data/hound.db'
 
 
 class DataInterface:
 
     def __init__(self):
-        #Linux: /home/source/db/hound.db
-        self.db = sqlite3.connect('V:/CircleS7en/Downloads/hound.db')
+        self.db = sqlite3.connect(DB_LOCATION)
         self.cursor = self.db.cursor()
 
     def get_twitter_credentials(self, username):
@@ -36,7 +37,7 @@ class DataInterface:
             return dict([
                 ('Mode', result[1]),
                 ('Args', result[2]),
-                ('Set Time', result[0]),
+                ('Set Time', datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f')),
             ])
         else:
             return dict([
@@ -45,8 +46,8 @@ class DataInterface:
                 ('Set Time', datetime.strptime(DEFAULT_TIME, "%Y-%m-%d %H:%M:%S.%f"))
             ])
 
-    def set_hound_mode(self, new_mode, new_args):
-        current_datetime = datetime.now()
+    def set_hound_mode(self, new_mode, new_args=''):
+        current_datetime = datetime.utcnow()
         if new_mode not in SUPPORTED_MODES:
             return
 
@@ -95,7 +96,7 @@ class DataInterface:
     def update_access_points(self, scan):
         insert_command = "INSERT INTO access_points VALUES(?,?,?)"
         update_command = "UPDATE access_points SET LastSeen = ? WHERE Mac = ?"
-        current_datetime = datetime.now()
+        current_datetime = datetime.utcnow()
         seen_access_points = self.get_all_access_points()
         messages = []
 
@@ -114,7 +115,7 @@ class DataInterface:
         update_same_state = 'UPDATE mac_addresses SET LastSeen = ? WHERE Mac = ?'
         update_new_connect = 'UPDATE mac_addresses SET StateDelta = ?, LastSeen = ?, State = ? WHERE Mac = ?'
         update_new_disconnect = 'UPDATE mac_addresses SET StateDelta = ?, State = ? WHERE Mac = ?'
-        current_datetime = datetime.now()
+        current_datetime = datetime.utcnow()
         connected_mac_addresses = self.get_mac_addresses_with_state('CONNECTED')
         disconnected_mac_addresses = self.get_mac_addresses_with_state('DISCONNECTED')
         messages = []
