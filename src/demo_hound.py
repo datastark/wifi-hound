@@ -5,7 +5,7 @@ from Sniffer import Sniffer
 from DataInterface import DataInterface
 from TwitterInterface import TwitterInterface
 
-SLEEP_INTERVAL = 30
+SLEEP_INTERVAL = 10
 
 
 class Demo:
@@ -70,9 +70,7 @@ class Demo:
 
 
 if __name__ == '__main__':
-    count = 0
-    while count < 5:
+    while True:
         demo = Demo()
         demo.run()
-        count += 1
         time.sleep(SLEEP_INTERVAL)

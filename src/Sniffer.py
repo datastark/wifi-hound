@@ -1,4 +1,5 @@
 import os
+import time
 import subprocess
 
 
@@ -19,7 +20,7 @@ class Sniffer:
 
     def run_aircrack_scan(self, ssid=None):
         try:
-            os.remove('/home/source/scans/scan-01.csv')
+            os.remove('/home/source/scans/hound_scan-01.csv')
         except OSError:
             pass
         self.start_monitor_mode()
@@ -31,7 +32,7 @@ class Sniffer:
         self.refresh_hotspot_connection()
 
     def parse_scan_data(self):
-        scan_file = open('/home/source/scans/scan-01.csv')
+        scan_file = open('/home/source/scans/hound_scan-01.csv')
         raw_data = scan_file.readlines()
         scan_file.close()
         scan_data = dict()
@@ -41,6 +42,8 @@ class Sniffer:
         in_basestations = True
         for line in raw_data:
             content = line.split(', ')
+            if len(content) < 14:
+                continue
             if content[0] == 'BSSID':
                 continue
             elif content[0] == 'Station MAC':
@@ -75,7 +78,7 @@ class Sniffer:
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         down.communicate()
         up = subprocess.Popen(['ifup', 'wlan0'], stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         up.communicate()
 
     def start_monitor_mode(self):
@@ -90,17 +93,17 @@ class Sniffer:
 
     def sniff_ssid(self, ssid):
         command = ['airodump-ng', 'mon0', '--bssid {0}'.format(ssid),
-                   '--write /home/source/scans/hound_scan', '--output-format csv'.format(ssid)];
+                   '--write /home/source/scans/hound_scan', '--output-format csv'.format(ssid)]
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sniffer.communicate(timeout=15)
+        time.sleep(15)
         sniffer.kill()
 
     def sniff_all(self):
         command = ['airodump-ng', 'mon0', '--write /home/source/scans/hound_scan', '--output-format csv']
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sniffer.communicate(timeout=15)
+        time.sleep(15)
         sniffer.kill()
 
     def parse_access_point_scan(self, output):
