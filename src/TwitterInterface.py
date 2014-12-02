@@ -3,6 +3,8 @@ import shlex
 import datetime
 from twython import Twython
 
+POST_THROTTLE = 1
+
 
 class TwitterInterface:
     def __init__(self, data_interface):
@@ -11,9 +13,9 @@ class TwitterInterface:
         self.twitter = self.connect_to_twitter()
 
     def connect_to_twitter(self):
-        tokens = self.data_interface.get_twitter_credentials(self.twitter_name)
-        return Twython(tokens['consumer_key'], tokens['consumer_secret'],
-                       tokens['access_token_key'], tokens['access_token_secret'])
+        credentials = self.data_interface.get_twitter_credentials(self.twitter_name)
+        return Twython(credentials['consumer_key'], credentials['consumer_secret'],
+                       credentials['access_token_key'], credentials['access_token_secret'])
 
     def post(self, full_message):
         # Split the message if it's more than 140 characters
@@ -25,13 +27,15 @@ class TwitterInterface:
     def post_many(self, messages):
         for message in messages:
             self.post(message)
-            time.sleep(1)
+            time.sleep(POST_THROTTLE)
 
     def get_last_mention(self):
-        mentions = self.twitter.get_mentions_timeline()
-        last_mention = dict()
-        mention_text = mentions[0]['text']
+        latest_mention = self.twitter.get_mentions_timeline()[0]
+        mention_text = latest_mention['text']
         split_mention = shlex.split(mention_text)
+
+        last_mention = dict()
         last_mention['text'] = split_mention[1:]
-        last_mention['created_at'] = datetime.datetime.strptime(mentions[0]['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
+        last_mention['created_at'] = datetime.datetime.strptime(latest_mention['created_at'],
+                                                                '%a %b %d %H:%M:%S +0000 %Y')
         return last_mention

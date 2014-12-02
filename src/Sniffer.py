@@ -92,15 +92,15 @@ class Sniffer:
         monitor.communicate()
 
     def sniff_ssid(self, ssid):
-        command = ['airodump-ng', 'mon0', '--bssid {0}'.format(ssid),
-                   '--write /home/source/scans/hound_scan', '--output-format csv'.format(ssid)]
+        command = ['airodump-ng', 'mon0', '--bssid', ssid,
+                   '--write', '/home/source/scans/hound_scan', '--output-format', 'csv']
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(15)
         sniffer.kill()
 
     def sniff_all(self):
-        command = ['airodump-ng', 'mon0', '--write /home/source/scans/hound_scan', '--output-format csv']
+        command = ['airodump-ng', 'mon0', '--write', '/home/source/scans/hound_scan', '--output-format', 'csv']
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(15)
@@ -109,16 +109,16 @@ class Sniffer:
     def parse_access_point_scan(self, output):
         all_visible = dict()
         arr = output.split('\n')
-        MAC = ''
-        SSID = ''
+        mac = ''
+        ssid = ''
         for line in arr:
-            if MAC == '' and 'Address: ' in line:
-                MAC = line.split('Address: ')[1]
-            elif MAC != '' and 'ESSID:' in line:
-                SSID = line.split('"')[1]
-                all_visible[MAC] = SSID
-                MAC = ''
-                SSID = ''
+            if mac == '' and 'Address: ' in line:
+                mac = line.split('Address: ')[1]
+            elif mac != '' and 'ESSID:' in line:
+                ssid = line.split('"')[1]
+                all_visible[mac] = ssid
+                mac = ''
+                ssid = ''
 
         return all_visible
 
