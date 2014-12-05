@@ -105,6 +105,8 @@ class DataInterface:
                 self.cursor.execute(update_command, [current_datetime, mac])
             else:
                 self.cursor.execute(insert_command, [mac, ssid, current_datetime])
+                if ssid == '':
+                    ssid = 'Not Broadcasted'
                 messages.append("New AP: {0} - {1}".format(mac, ssid))
 
         self.db.commit()

@@ -66,6 +66,7 @@ class HoundDaemon():
             results = self.sniffer.execute()
             if len(results):
                 self.twitter_interface.post_many(results)
+            time.sleep(SLEEP_INTERVAL)
 
 if __name__ == '__main__':
     test_daemon = HoundDaemon()
