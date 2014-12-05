@@ -26,8 +26,12 @@ class TwitterInterface:
 
     def post_many(self, messages):
         for message in messages:
-            self.post(message)
-            time.sleep(POST_THROTTLE)
+            try:
+                self.post(message)
+                time.sleep(POST_THROTTLE)
+            except Exception:
+                print 'Repeat Twitter Message'
+                print message
 
     def get_last_mention(self):
         latest_mention = self.twitter.get_mentions_timeline()[0]

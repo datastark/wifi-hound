@@ -35,21 +35,22 @@ class HoundDaemon():
                     self.twitter_interface.post('Mode Successfully Set: {0}, {1}'.format(command[1], command[2]))
             except Exception:
                 print 'Duplicate Twitter Status'
+                print 'Mode Successfully Set: {0}, {1}'.format(command[1], command[2])
         elif command[0] == 'REFRESH':
             if last_mention['created_at'] > datetime.utcnow() - timedelta(0,SLEEP_INTERVAL):
                 current_config = self.data_interface.get_hound_mode()
+                message = '{0} Refresh Complete'.fromat(current_config['Mode'])
                 try:
                     if current_config['Mode'] == 'SCAN':
                         self.data_interface.refresh_scan()
-                        self.twitter_interface.post('SCAN Refresh Complete')
                     elif current_config['Mode'] == 'AP':
                         self.data_interface.refresh_ap()
-                        self.twitter_interface.post('AP Refresh Complete')
                     else:
                         self.data_interface.refresh_scan()
-                        self.twitter_interface.post('MAC Refresh Complete')
+                    self.twitter_interface.post(message)
                 except Exception:
                     print 'Duplicate Twitter Status'
+                    print message
 
     def mention_is_new(self, last_mention):
         current_config = self.data_interface.get_hound_mode()
