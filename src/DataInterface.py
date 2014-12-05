@@ -6,7 +6,7 @@ DEFAULT_ARGS = ''
 DEFAULT_TIME = "2014-11-30 00:00:00.00000"
 SUPPORTED_MODES = ['SCAN', 'AP', 'MAC']
 #Linux: /home/source/db/hound.db
-DB_LOCATION = 'C:/Users/ericf_000/Documents/Data/hound.db'
+DB_LOCATION = '/home/source/db/hound.db'
 
 
 class DataInterface:
