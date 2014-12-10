@@ -10,8 +10,10 @@ class Sniffer:
         self.mode = self.data_interface.get_hound_mode()
 
     def scan_access_points(self):
+        print '\tRunning Access Point Scan'
         command = 'iwlist wlan0 s'
         response = os.popen(command)
+        print '\tParsing Scan Results...'
         result = response.read()
         response.close()
 
@@ -20,7 +22,7 @@ class Sniffer:
 
     def run_aircrack_scan(self, ssid=None):
         try:
-            os.remove('/home/source/scans/hound_scan-01.csv')
+            os.remove('/home/efaurie/Source/scans/hound_scan-01.csv')
         except OSError:
             pass
         self.start_monitor_mode()
@@ -29,11 +31,12 @@ class Sniffer:
         else:
             self.sniff_all()
         self.stop_monitor_mode()
-        self.refresh_hotspot_connection()
+        #self.refresh_hotspot_connection()
 
     def parse_scan_data(self):
-        scan_file = open('/home/source/scans/hound_scan-01.csv')
+        scan_file = open('/home/efaurie/Source/scans/hound_scan-01.csv')
         raw_data = scan_file.readlines()
+        print '\t\t\tScan Log Contains {0} Lines...'.format(len(raw_data))
         scan_file.close()
         scan_data = dict()
         scan_data['APs'] = dict()
@@ -42,7 +45,7 @@ class Sniffer:
         in_basestations = True
         for line in raw_data:
             content = line.split(', ')
-            if len(content) < 14:
+            if len(content) < 2:
                 continue
             if content[0] == 'BSSID':
                 continue
@@ -53,6 +56,7 @@ class Sniffer:
                 scan_data['APs'][content[0]] = content[13]
             else:
                 scan_data['Devices'].append(content[0])
+                print '\t\t\tConnected Device: {0}'.format(content[0])
 
         return scan_data
 
@@ -82,29 +86,35 @@ class Sniffer:
         up.communicate()
 
     def start_monitor_mode(self):
+        print '\tPlacing wlan0 Into Monitor Mode'
         monitor = subprocess.Popen(['airmon-ng', 'start', 'wlan0'], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         monitor.communicate()
 
     def stop_monitor_mode(self):
+        print '\tRemoving mon0 (Monitor Interface)'
         monitor = subprocess.Popen(['airmon-ng', 'stop', 'mon0'], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         monitor.communicate()
 
     def sniff_ssid(self, ssid):
+        print '\tRunning aircrack Scan on SSID: {0}'.format(ssid)
         command = ['airodump-ng', 'mon0', '--bssid', ssid,
-                   '--write', '/home/source/scans/hound_scan', '--output-format', 'csv']
+                   '--write', '/home/efaurie/Source/scans/hound_scan', '--output-format', 'csv']
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(15)
         sniffer.kill()
+        print '\tScan Complete!'
 
     def sniff_all(self):
-        command = ['airodump-ng', 'mon0', '--write', '/home/source/scans/hound_scan', '--output-format', 'csv']
+        print '\tRunning aircrack Scan'
+        command = ['airodump-ng', 'mon0', '--write', '/home/efaurie/Source/scans/hound_scan', '--output-format', 'csv']
         sniffer = subprocess.Popen(command, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(15)
         sniffer.kill()
+        print '\tScan Complete!'
 
     def parse_access_point_scan(self, output):
         all_visible = dict()
@@ -117,6 +127,9 @@ class Sniffer:
             elif mac != '' and 'ESSID:' in line:
                 ssid = line.split('"')[1]
                 all_visible[mac] = ssid
+                if ssid == '':
+                   ssid = 'Unbroadcasted'
+                print '\t\tFound Access Point: {0}'.format(ssid)
                 mac = ''
                 ssid = ''
 

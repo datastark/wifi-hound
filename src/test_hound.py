@@ -39,7 +39,7 @@ class HoundDaemon():
         elif command[0] == 'REFRESH':
             if last_mention['created_at'] > datetime.utcnow() - timedelta(0,SLEEP_INTERVAL):
                 current_config = self.data_interface.get_hound_mode()
-                message = '{0} Refresh Complete'.fromat(current_config['Mode'])
+                message = '{0} Refresh Complete'.format(current_config['Mode'])
                 try:
                     if current_config['Mode'] == 'SCAN':
                         self.data_interface.refresh_scan()
@@ -51,6 +51,8 @@ class HoundDaemon():
                 except Exception:
                     print 'Duplicate Twitter Status'
                     print message
+            else:
+               print 'REFRESH Command Stale, Skipping Refresh...'
 
     def mention_is_new(self, last_mention):
         current_config = self.data_interface.get_hound_mode()
@@ -60,14 +62,29 @@ class HoundDaemon():
             return False
 
     def run(self):
+        loop_count = 1
         while True:
+            print 'Starting Sequence {0}:'.format(loop_count)
+            print 'Getting Last Mentions From Twitter...'
             last_mention = self.twitter_interface.get_last_mention()
+            print 'Last Mention Received: {0}'.format(' '.join(last_mention['text']))
             if self.mention_is_new(last_mention):
+                if last_mention['text'][0] != 'REFRESH':
+                   print 'Executing Command...'
                 self.parse_and_execute_command(last_mention)
+            else:
+               print 'Last Mention Stale, Not Executing...'
+            print 'Running Sniffer...'
             results = self.sniffer.execute()
             if len(results):
+                print 'Posting Sniffer Results...'
                 self.twitter_interface.post_many(results)
+            else:
+                print 'No New Sniffer Results...'
+            print 'Sleeping for {0} Seconds...'.format(SLEEP_INTERVAL)
             time.sleep(SLEEP_INTERVAL)
+            print '\n\n'
+            loop_count += 1
 
 if __name__ == '__main__':
     test_daemon = HoundDaemon()

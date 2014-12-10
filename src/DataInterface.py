@@ -6,7 +6,7 @@ DEFAULT_ARGS = ''
 DEFAULT_TIME = "2014-11-30 00:00:00.00000"
 SUPPORTED_MODES = ['SCAN', 'AP', 'MAC']
 #Linux: /home/source/db/hound.db
-DB_LOCATION = '/home/source/db/hound.db'
+DB_LOCATION = '/home/efaurie/Source/wifi-hound/resources/hound.db'
 
 
 class DataInterface:
@@ -81,6 +81,7 @@ class DataInterface:
         self.db.commit()
 
     def refresh_scan(self):
+        print '\tClearing access_points table'
         self.drop_table('access_points')
         statement = 'CREATE TABLE access_points(Mac TEXT, Ssid TEXT, LastSeen DATETIME);'
         self.cursor.execute(statement)
@@ -126,18 +127,18 @@ class DataInterface:
             if mac in connected_mac_addresses:
                 self.cursor.execute(update_same_state, [current_datetime, mac])
             elif mac in disconnected_mac_addresses:
-                self.cursor.execute(update_new_connect, [disconnected_mac_addresses[mac]['StateDelta']+1,
-                                                         current_datetime, 'CONNECTED', mac])
-                messages.append("Device Reconnected: {0}".format(mac))
+                new_delta = disconnected_mac_addresses[mac]['StateDelta']+1
+                self.cursor.execute(update_new_connect, [new_delta, current_datetime, 'CONNECTED', mac])
+                messages.append("Device Reconnected: {0} Delta: {1}".format(mac, new_delta))
             else:
                 self.cursor.execute(insert_command, [mac, current_datetime, 'CONNECTED', 1])
-                messages.append("New Device Detected: {0}".format(mac))
+                messages.append("New Device Detected: {0} Delta: 1".format(mac))
 
-        for mac in connected_mac_addresses.iteritems():
+        for mac,data in connected_mac_addresses.iteritems():
             if mac not in scan:
-                self.cursor.execute(update_new_disconnect, [connected_mac_addresses[mac]['StateDelta']+1,
-                                                            'DISCONNECTED', mac])
-                messages.append("Device Disconnected: {0}".format(mac))
+                new_delta = data['StateDelta'] + 1
+                self.cursor.execute(update_new_disconnect, [new_delta, 'DISCONNECTED', mac])
+                messages.append("Device Disconnected: {0} Delta: {1}".format(mac, new_delta))
         self.db.commit()
         return messages
 
